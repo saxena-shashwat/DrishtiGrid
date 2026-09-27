@@ -251,7 +251,7 @@ platevision/
 │   │   │   ├── metrics.py          demo.py          repository.py
 │   │   │   ├── models.py           db.py            frame_store.py
 │   │   └── main.py
-│   ├── tests/                      # 97 pytest tests
+│   ├── tests/                      # 103 pytest tests
 │   ├── Dockerfile
 │   └── requirements.txt
 ├── frontend/
@@ -283,32 +283,125 @@ platevision/
 
 ---
 
-## Quick start
+## Installation & running
 
-### Prerequisites
+This section covers every supported way to install and run the project. If you
+just want the fastest path, follow **steps 1–7** below — no database, model
+weights, or GPU are required to get a working demo.
 
-- Python **3.10+** · Node.js **18+** · Git
-- Optional: ONNX model weights in `models/` (see [`models/README.md`](models/README.md))
+### 0. Prerequisites
 
-### 1. Backend
+| Requirement | Minimum | Notes |
+|---|---|---|
+| Python | **3.10+** (3.11–3.13 tested) | Backend runtime |
+| Node.js | **18+** (20+ recommended) | Frontend build/run |
+| npm | bundled with Node | Frontend deps |
+| Git | any recent | Clone |
+| Docker + Compose | optional | Containerised run |
+| ONNX model weights | optional | See [step 4](#4-optional-model-weights) |
+| GPU | optional | CPU-only works; the pipeline falls back automatically |
+
+Check your toolchain:
+
+```bash
+python --version        # 3.10 or newer
+node --version          # v18 or newer
+npm --version
+```
+
+### 1. Clone the repository
+
+```bash
+git clone <repository-url> platevision
+cd platevision
+```
+
+### 2. Configure environment variables
+
+```bash
+cp .env.example .env            # repo root — loaded automatically
+# or: cp .env.example backend/.env
+```
+
+Every variable in `.env.example` has a working default, so **this step is
+optional** — the app runs without a `.env`. The backend loads `.env` from the
+repository root *or* from `backend/` (a `backend/.env` takes precedence when both
+exist). To enable authenticated features, set at least:
+
+```ini
+DRISHTI_ADMIN_KEY=admin-demo        # role: admin  — full plates, audit, fusion control
+DRISHTI_OPERATOR_KEY=operator-demo  # role: operator — camera + stream control
+DRISHTI_VIEWER_KEY=viewer-demo      # role: viewer  — read-only, plates masked
+```
+
+If no key is set, the API falls back to a masked, read-only **viewer** role.
+Environment variables exported in the shell override the `.env` file. See
+[Configuration](#configuration) for the full list of variables.
+
+### 3. Install backend dependencies
 
 ```bash
 cd backend
 python -m venv .venv
-source .venv/bin/activate          # Windows: .venv\Scripts\activate
+
+# Activate the virtual environment:
+source .venv/bin/activate           # macOS / Linux
+# .venv\Scripts\activate            # Windows (cmd)
+# .venv\Scripts\Activate.ps1        # Windows (PowerShell)
+
+pip install --upgrade pip
 pip install -r requirements.txt
+```
 
-export DRISHTI_ADMIN_KEY="admin-demo"
+`requirements.txt` installs FastAPI, Uvicorn, Pydantic v2, SQLAlchemy, OpenCV
+(headless), NumPy, Pillow, ONNX Runtime, and the pytest toolchain.
+
+> **Debian/Ubuntu note:** the `opencv-python-headless` wheel needs `libglib2.0-0`.
+> If OpenCV fails to import, run `sudo apt-get install -y libglib2.0-0`.
+
+### 4. (Optional) Model weights
+
+The system runs without model weights using documented mock/classical backends,
+and reports which backend is active at `GET /api/grid/system/status`. For
+production-grade accuracy, fetch the ONNX weights:
+
+```bash
+python scripts/setup_models.py       # from the repo root
+```
+
+Or place them manually (see [`models/README.md`](models/README.md) for sources):
+
+```
+models/plate_detector.onnx     # plate detection + OCR
+models/vehicle_detector.onnx   # vehicle detection (optional)
+models/vehicle_reid.onnx       # vehicle Re-ID embeddings (optional)
+```
+
+### 5. Start the backend
+
+```bash
+# Still inside backend/ with the venv active
+export DRISHTI_ADMIN_KEY="admin-demo"     # Windows: set DRISHTI_ADMIN_KEY=admin-demo
 export DRISHTI_VIEWER_KEY="viewer-demo"
-
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-- API: `http://localhost:8000`
-- Interactive docs (Swagger): `http://localhost:8000/api/docs`
-- ReDoc: `http://localhost:8000/api/redoc`
+| URL | Purpose |
+|---|---|
+| `http://localhost:8000` | API root |
+| `http://localhost:8000/api/health` | Health check |
+| `http://localhost:8000/api/docs` | Swagger UI |
+| `http://localhost:8000/api/redoc` | ReDoc |
 
-### 2. Frontend
+Verify it is up:
+
+```bash
+curl http://localhost:8000/api/health
+```
+
+### 6. Install and start the frontend
+
+In a **second terminal**:
 
 ```bash
 cd frontend
@@ -316,16 +409,128 @@ npm install
 npm run dev
 ```
 
-- ANPR dashboard: `http://localhost:3000`
-- **Drishti Grid command dashboard: `http://localhost:3000/grid`**
+| URL | Purpose |
+|---|---|
+| `http://localhost:3000` | ANPR dashboard |
+| `http://localhost:3000/grid` | **Drishti Grid command dashboard** |
+| `http://localhost:3000/cctv` | Live traffic / CCTV stream |
+| `http://localhost:3000/camera` | Phone-camera scanner |
+| `http://localhost:3000/upload` | Photo / video upload |
 
-### 3. Docker
+The frontend reads the backend location from `NEXT_PUBLIC_BACKEND_URL`
+(default `http://localhost:8000`, set in `frontend/.env.local` or the shell):
 
 ```bash
-docker compose up --build -d
+NEXT_PUBLIC_BACKEND_URL="http://localhost:8000" npm run dev
 ```
 
-- Frontend: `http://localhost:3000` · Backend health: `http://localhost:8000/api/health`
+### 7. Verify the full stack
+
+```bash
+# 1. Backend health
+curl http://localhost:8000/api/health
+
+# 2. Start the 5-camera synthetic demo corridor (real pipeline, synthetic scenes)
+curl -X POST http://localhost:8000/api/grid/demo/setup \
+  -H "X-API-Key: admin-demo" -H "Content-Type: application/json" \
+  -d '{"start_processing": true}'
+
+# 3. Confirm cameras are processing
+curl http://localhost:8000/api/grid/system/status -H "X-API-Key: admin-demo"
+```
+
+Then open `http://localhost:3000/grid`, set the access key to `admin-demo`, and
+search a plate (e.g. `GJ01AB1234`). The full walkthrough is in
+[Running the Drishti Grid demo](#running-the-drishti-grid-demo).
+
+### Option A — one-command local start
+
+After completing steps 1–4 once, you can start both services together:
+
+```bash
+./scripts/run_dev.sh          # macOS / Linux
+scripts\run_dev.bat           # Windows
+```
+
+`run_dev.sh` activates `backend/.venv`, starts Uvicorn on port 8000 and
+`next dev` on port 3000, and terminates both on `Ctrl+C`. It assumes the venv
+created in step 3 already exists.
+
+### Option B — Docker Compose
+
+Runs the backend and frontend in containers with health checks and no local
+Python/Node setup. Docker and Compose are required.
+
+```bash
+cp .env.example .env          # optional: add DRISHTI_* keys
+docker compose up --build -d
+docker compose ps             # check container health
+docker compose logs -f backend
+```
+
+| Service | URL |
+|---|---|
+| Frontend | `http://localhost:3000` |
+| Backend health | `http://localhost:8000/api/health` |
+
+The Compose file mounts `./models` read-only into the backend, so place ONNX
+weights there before starting if you want real model inference. Stop and remove
+the containers with:
+
+```bash
+docker compose down           # add -v to also drop volumes
+```
+
+> The Compose backend does not pass `DRISHTI_*_KEY` by default. Add them under the
+> backend service's `environment:` block in `docker-compose.yml`, or export them
+> and use `docker compose run -e DRISHTI_ADMIN_KEY=admin-demo ...`, to enable
+> authenticated (non-viewer) access.
+
+### Option C — production build (no Docker)
+
+```bash
+# Backend — multiple workers, no auto-reload
+cd backend && source .venv/bin/activate
+uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 2
+
+# Frontend — build once, then serve the optimised bundle
+cd frontend
+npm run build
+NEXT_PUBLIC_BACKEND_URL="http://localhost:8000" npm run start
+```
+
+### Ports and firewall
+
+| Port | Service | Override |
+|---|---|---|
+| 8000 | Backend API | `--port` on `uvicorn` |
+| 3000 | Frontend | `-p 3000` in the npm scripts, or `next dev -p <port>` |
+
+To reach the dashboard from another device on your LAN, bind both services to
+`0.0.0.0` (as shown above) and allow those ports through your firewall, then
+browse to `http://<your-ip>:3000/grid`. Camera access over plain HTTP requires
+the browser secure-context workaround described in
+[Mobile camera over HTTPS](#mobile-camera-over-https).
+
+### Running the test suites
+
+```bash
+cd backend  && python -m pytest -q      # 103 tests
+cd frontend && npm test                 # 16 tests
+cd frontend && npm run build            # production build check
+```
+
+### Troubleshooting
+
+| Symptom | Fix |
+|---|---|
+| `ModuleNotFoundError: cv2` / missing `libGL` | `sudo apt-get install -y libgl1 libglib2.0-0` (Debian/Ubuntu) |
+| `Address already in use` on 8000/3000 | Another instance is running; stop it or pass a different `--port` / `-p` |
+| Frontend shows no cameras or data | Confirm the backend is reachable and `NEXT_PUBLIC_BACKEND_URL` is correct, then reload |
+| `403 Forbidden` on camera/search actions | Set the `X-API-Key` in the dashboard's **Set access key** field; defaults to a masked viewer otherwise |
+| Dashboard shows `MockPlateDetector` | No ONNX weights present — expected; run `scripts/setup_models.py` or accept demo backends |
+| Plate search returns no matches | Ensure cameras are `PROCESSING` and `POST /api/grid/fusion/recompute` has run since sightings were created |
+| `docker compose` fails a health check | Give the backend ~30 s to start, then `docker compose logs backend` |
 
 ---
 
@@ -470,7 +675,7 @@ All settings have working defaults; copy `.env.example` to `.env` to override.
 ## Testing
 
 ```bash
-# Backend — 97 tests
+# Backend — 103 tests
 cd backend && python -m pytest -v
 
 # Frontend — 16 tests across 3 files

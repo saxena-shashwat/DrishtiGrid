@@ -1,9 +1,15 @@
 """Configuration settings for PlateVision API."""
 
 import os
+from pathlib import Path
 from typing import List, Union
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# Accept a .env in the current working directory (backend/) or at the repository
+# root, so both `cp .env.example backend/.env` and a root-level .env work when
+# the server is started from backend/.
+_ROOT_ENV = Path(__file__).resolve().parents[3] / ".env"
 
 
 class Settings(BaseSettings):
@@ -154,7 +160,7 @@ class Settings(BaseSettings):
     GRID_SEED_DEMO_ON_STARTUP: bool = False
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=(str(_ROOT_ENV), ".env"),
         env_file_encoding="utf-8",
         case_sensitive=True,
         extra="ignore",
