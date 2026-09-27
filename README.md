@@ -245,4 +245,22 @@ npm run build
 
 - **No Permanent Server Storage**: Images and crop buffers are held in a short-lived transient cache with 5-minute TTL.
 - **Redacted Logging**: Plate registration characters are automatically masked in console/system logs (e.g. `GJ01****34`).
-- **No Surveillance**: Contains no vehicle-owner lookup, tracking, surveillance, facial recognition, or centralized database.
+- **No Owner Lookup**: Contains no vehicle-owner lookup or centralized identity registry.
+
+### Drishti Grid (city-wide trajectory tracking)
+
+The `Drishti Grid` module extends PlateVision to multi-camera trajectory
+reconstruction. It **does** perform authorised multi-camera vehicle tracking with
+explicit privacy controls, and is intended for authorised, synthetic, or demo
+footage only:
+
+- **Role-based access control** (`admin` / `operator` / `viewer`) via `X-API-Key`.
+- **Plate masking** for viewers; full plates require the `view_full_plate` permission.
+- **Audit logging** of every plate search, camera action, and fusion run.
+- **No raw video transmission** — only lightweight annotated JPEG snapshots.
+- **Edge-first processing** — cameras are processed locally; only descriptors and
+  embeddings are stored centrally.
+- **Explicit abstention** — the system reports "unresolved" rather than guessing.
+
+See [`DRISHTI_GRID.md`](DRISHTI_GRID.md) for architecture, setup, the fusion
+mathematics, API reference, database schema, and testing.
