@@ -38,3 +38,11 @@ Thumbs.db
 .idea/
 .vscode/
 *.swp
+
+# SQLite / Local Databases & Logs
+*.db
+*.sqlite
+*.sqlite3
+drishti_grid.db
+*.log
+

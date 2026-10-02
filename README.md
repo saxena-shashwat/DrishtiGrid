@@ -274,12 +274,13 @@ platevision/
 │   └── package.json
 ├── models/                         # ONNX weights (not committed) + README
 ├── scripts/                        # setup_models.py, run_dev.sh, run_dev.bat
-├── desktop-console/                # standalone GPU multi-plate console (separate README)
+
 ├── docker-compose.yml
 ├── .env.example
 ├── DRISHTI_GRID.md                 # full subsystem reference
 └── README.md
 ```
+
 
 ---
 
@@ -779,13 +780,7 @@ contract, and deployment guidance.
 - [`DRISHTI_GRID.md`](DRISHTI_GRID.md) — full subsystem reference: architecture,
   fusion mathematics, API, database schema, event stream, privacy model, testing.
 - [`models/README.md`](models/README.md) — model weights and download sources.
-- [`desktop-console/README.md`](desktop-console/README.md) — standalone GPU
-  multi-plate detection console with batched OCR and annotated video export.
-  Its separate API and console are independent of the web application above; the
-  ten-plate 1080p synthetic benchmark measured 39.1 ms median / 44.2 ms p95 for
-  the complete local HTTP response (a strict sub-40 ms accurate all-plate result
-  is not achieved). Model weights, private uploads, datasets, and credentials are
-  excluded from version control.
+
 
 ---
 

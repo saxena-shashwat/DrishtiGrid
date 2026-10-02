@@ -9,9 +9,8 @@ Repository-specific knowledge for agents working on PlateVision / Drishti Grid.
   `/api/grid` (`app/api/endpoints/grid.py`, registered in `app/api/router.py`).
 - `frontend/` — Next.js 14 App Router. The Drishti Grid dashboard is
   `app/grid/page.tsx` with components in `components/grid/` and API/type clients
-  in `lib/grid-*.ts`.
-- `desktop-console/` — separate GPU console; do not couple it to the web app.
 - `models/` — ONNX weights. Not committed; see `models/README.md`.
+
 
 ## Build / test / run
 
